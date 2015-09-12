@@ -34,7 +34,7 @@ This file is part of pyPhotoGeoTagger.
 from __future__ import division, print_function
 
 __version__ = 0.2
-__version_date__ = '2013-09-12'
+__version_date__ = '2015-09-12'
 
 defaultServer= 'tile.osm.org'
 #defaultServer =  'tile.opencyclemap.org/cycle'
