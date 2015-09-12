@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 '''
 
 pyPhotoGeoTagger
@@ -68,10 +68,10 @@ map.on('moveend', function(e) {update.out( map.getZoom() ) })
 
 GPS = 'Exif.GPSInfo.GPS'
 
-import PySide
-from PySide.QtCore import *
-from PySide import QtCore
-from PySide.QtGui import *
+import PyQt4
+from PyQt4.QtCore import *
+from PyQt4 import QtCore
+from PyQt4.QtGui import *
 import glob
 import os
 import sys
@@ -137,7 +137,8 @@ class Update(QObject):
         super(Update, self).__init__(parent)
         self.parent = parent
 
-    @QtCore.Slot(str)
+    #@QtCore.Slot(str)
+    @pyqtSlot(str)
 
 
     def out(self, message):
@@ -155,7 +156,8 @@ class ClickedPos(QObject):
         self.parent = parent
 
 
-    @QtCore.Slot(str)
+    #@QtCore.Slot(str)
+    @pyqtSlot(str)
     def out(self, message):
         '''
         obtain clicked position from leaflet
@@ -202,9 +204,12 @@ class ClickedPos(QObject):
 
 
 class MySignal(QObject):
-        sig = Signal(str)
-        coord = Signal(dict)
-        thumbnail = Signal(QImage,str)
+        #sig = Signal(str)
+        sig = pyqtSignal(str)
+        #coord = Signal(dict)
+        coord = pyqtSignal(dict)
+        #thumbnail = Signal(QImage,str)
+        thumbnail = pyqtSignal(QImage,str)
 
 class MyLongThread(QThread):
     def __init__(self, parent = None):
@@ -554,8 +559,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         <br>
         https://github.com/olivierfriard/pyphotogeotagger<br>
         <br>
-        Python %s - Qt %s - PySide %s on %s""" % \
-        ('pyPhotoGeoTagger', __version__, __version_date__, platform.python_version(), PySide.QtCore.__version__, PySide.__version__, platform.system()))
+        Python %s - Qt %s """ % \
+        ('pyPhotoGeoTagger', __version__, __version_date__, platform.python_version()))
 
 
 
