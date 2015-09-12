@@ -2,17 +2,17 @@
 '''
 
 pyPhotoGeoTagger
-Copyright 2014 Olivier Friard
+Copyright 2014-2015 Olivier Friard
+
+require python3
 
 usage:
 left button: save coordinates (latitude, longitude) of clicked pixel in selected picture
 
 based on Leaflet (http://leafletjs.com/)
-require pyexiv2:
-aptitude install python2.7-pyexiv2
+require pyexiv2: pip3 py3exiv2
 
 This file is part of pyPhotoGeoTagger.
-
 
   pyPhotoGeoTagger is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@ This file is part of pyPhotoGeoTagger.
 
 from __future__ import division, print_function
 
-__version__ = 0.1
-__version_date__ = '2014-12-18'
+__version__ = 0.2
+__version_date__ = '2013-09-12'
 
 defaultServer= 'tile.osm.org'
 #defaultServer =  'tile.opencyclemap.org/cycle'
@@ -81,7 +81,7 @@ import fractions
 try:
     import pyexiv2
 except:
-    print( 'pyexiv2 is not installed. See http://tilloy.net/dev/pyexiv2/')
+    print( 'pyexiv2 is not installed. See http://www.py3exiv2.tuxfamily.org')
     sys.exit(1)
     
 
@@ -551,16 +551,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         about window
         '''
         import platform
+        from PyQt4.QtCore import QT_VERSION_STR
 
         QMessageBox.about(self, "About pyPhotoGeoTagger",
-        """<b>%s</b><br>
-        v. %s - %s<br>
-        Copyright &copy; 2014 Olivier Friard<br>
+        """<b>{programName}</b><br>
+        v. {version} - {versionDate}<br>
+        Copyright &copy; 2014-2015 Olivier Friard<br>
         <br>
-        https://github.com/olivierfriard/pyphotogeotagger<br>
+        https://github.com/barmanoo/pyPhotoGeoTagger<br>
         <br>
-        Python %s - Qt %s """ % \
-        ('pyPhotoGeoTagger', __version__, __version_date__, platform.python_version()))
+        Python {pythonVersion} - Qt {qtVersion} - PyQt v. {pyqtVersion}""".format( \
+        programName='pyPhotoGeoTagger', version=__version__, versionDate=__version_date__,
+         pythonVersion=platform.python_version(),
+          qtVersion=QT_VERSION_STR, pyqtVersion=PYQT_VERSION_STR )
+          )
+
+        '''format( prog_name=programName,
+         ver=ver, date=__version_date__, python_ver=platform.python_version(),
+         pyqt_ver=PYQT_VERSION_STR, system=platform.system(), qt_ver=QT_VERSION_STR,'''
+
+
+
 
 
 
