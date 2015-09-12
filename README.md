@@ -1,12 +1,12 @@
 pyPhotoGeoTagger
 ================
 
-A simple photo geo tagger written in Python and based on Leaflet.
+A simple photo geo tagger written in Python3 and based on Leaflet.
 
 Require:
 
-* pyexiv2
-http://tilloy.net/dev/pyexiv2/download.html
+* py3exiv2
+http://www.py3exiv2.tuxfamily.org
 
-* PySide or PyQT
+* PyQt4
 
