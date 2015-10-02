@@ -10,7 +10,8 @@ usage:
 left button: save coordinates (latitude, longitude) of clicked pixel in selected picture
 
 based on Leaflet (http://leafletjs.com/)
-require pyexiv2: pip3 py3exiv2
+require pyexiv2: http://www.py3exiv2.tuxfamily.org
+pip3 install py3exiv2
 
 This file is part of pyPhotoGeoTagger.
 
@@ -27,11 +28,7 @@ This file is part of pyPhotoGeoTagger.
   You should have received a copy of the GNU General Public License
   along with this program; if not see <http://www.gnu.org/licenses/>.
 
-
-
 '''
-
-from __future__ import division, print_function
 
 __version__ = 0.2
 __version_date__ = '2015-09-12'
@@ -137,9 +134,7 @@ class Update(QObject):
         super(Update, self).__init__(parent)
         self.parent = parent
 
-    #@QtCore.Slot(str)
     @pyqtSlot(str)
-
 
     def out(self, message):
         '''
@@ -155,8 +150,6 @@ class ClickedPos(QObject):
         super(ClickedPos, self).__init__(parent)
         self.parent = parent
 
-
-    #@QtCore.Slot(str)
     @pyqtSlot(str)
     def out(self, message):
         '''
@@ -204,11 +197,8 @@ class ClickedPos(QObject):
 
 
 class MySignal(QObject):
-        #sig = Signal(str)
         sig = pyqtSignal(str)
-        #coord = Signal(dict)
         coord = pyqtSignal(dict)
-        #thumbnail = Signal(QImage,str)
         thumbnail = pyqtSignal(QImage,str)
 
 class MyLongThread(QThread):
@@ -263,15 +253,13 @@ class MyLongThread(QThread):
                 b.setColor(QColor(255,0,0))
                 configButton.setForeground( b)
             '''
+            
 
         '''
         if len(imgList) == 1:
             print 'set current item',self.listWidget.item(0)
             self.listWidget.setCurrentItem(self.listWidget.item(0))
         '''
-
-
-
 
         '''self.signal.sig.emit('OK')'''
 
@@ -442,7 +430,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.longthread.start()
 
 
-
+    """
     def load_directory(self, path):
         '''
         load thumbnails of images from directory in listview widget
@@ -493,6 +481,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if len(imgList) == 1:
             self.listWidget.setCurrentItem(self.listWidget.item(0))
+        """
 
 
     def save_positions(self):
@@ -565,13 +554,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
          pythonVersion=platform.python_version(),
           qtVersion=QT_VERSION_STR, pyqtVersion=PYQT_VERSION_STR )
           )
-
-        '''format( prog_name=programName,
-         ver=ver, date=__version_date__, python_ver=platform.python_version(),
-         pyqt_ver=PYQT_VERSION_STR, system=platform.system(), qt_ver=QT_VERSION_STR,'''
-
-
-
 
 
 
