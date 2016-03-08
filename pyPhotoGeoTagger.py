@@ -2,7 +2,7 @@
 '''
 
 pyPhotoGeoTagger
-Copyright 2014-2015 Olivier Friard
+Copyright 2014-2016 Olivier Friard
 
 require python3
 
@@ -30,11 +30,13 @@ This file is part of pyPhotoGeoTagger.
 
 '''
 
-__version__ = 0.2
-__version_date__ = '2015-09-12'
+__version__ = 0.3
+__version_date__ = "2016-03-08"
 
-defaultServer= 'tile.osm.org'
+defaultServer= "tile.osm.org"
 #defaultServer =  'tile.opencyclemap.org/cycle'
+
+THUMBNAIL_SIZE = 128
 
 defaultLat = 45.03
 defaultLon = 7.66
@@ -92,18 +94,18 @@ class Fraction(fractions.Fraction):
         return fractions.Fraction.from_float(value).limit_denominator(99999)
 
 def decimal_to_dms(decimal):
-    '''
+    """
     Convert decimal degrees into degrees, minutes, seconds.
-    '''
+    """
     remainder, degrees = math.modf(abs(decimal))
     remainder, minutes = math.modf(remainder * 60)
     return [Fraction(n) for n in (degrees, minutes, remainder * 60)]
 
 
 def decCoordinate(ref, coord):
-    '''
+    """
     Convert degree, minutes coordinates to decimal coordinates
-    '''
+    """
     deg, min, sec = coord.split(' ')
 
     coordDec = eval(deg) + eval(min)/60 + eval(sec)/3600
@@ -197,14 +199,15 @@ class ClickedPos(QObject):
 
 
 class MySignal(QObject):
-        sig = pyqtSignal(str)
-        coord = pyqtSignal(dict)
-        thumbnail = pyqtSignal(QImage,str)
+    sig = pyqtSignal(str)
+    coord = pyqtSignal(dict)
+    thumbnail = pyqtSignal(QImage, str)
+
 
 class MyLongThread(QThread):
     def __init__(self, parent = None):
             QThread.__init__(self, parent)
-            self.picturesPath = ''
+            self.picturesPath = ""
             self.signal = MySignal()
 
     def run(self):
@@ -212,20 +215,17 @@ class MyLongThread(QThread):
         path = self.picturesPath
 
         if os.path.isdir(path):
-            imgList = sorted(glob.glob(path + '/*.jpg') + glob.glob(path + '/*.JPG'))
+            imgList = sorted(glob.glob(path + "/*.jpg") + glob.glob(path + "/*.JPG"))
 
         if os.path.isfile(path):
-            imgList = [ path ]
+            imgList = [path]
 
         self.changed =  []
 
         for pic in sorted(imgList):
-            print('processing %s' % pic)
+            print('processing {}'.format(pic))
 
             label = os.path.basename(pic).replace('.jpg','').replace('.JPG','')
-
-            i = QImage(pic).scaledToWidth(128)
-            self.signal.thumbnail.emit( i, label)
 
             # read GPS exif tag
             metadata = pyexiv2.ImageMetadata(pic)
@@ -245,6 +245,10 @@ class MyLongThread(QThread):
             else:
                 #self.gps_dict[ label ] = {'gps': (0, 0, 0), 'filename': pic}
                 self.signal.coord.emit({'gps': (0, 0, 0), 'filename': pic})
+
+            i = QImage(pic).scaledToWidth(THUMBNAIL_SIZE)
+            self.signal.thumbnail.emit(i, label)
+
 
             # filename in red for pictures with no location
             '''
@@ -330,19 +334,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
     def addCoord(self, coord):
-        '''
+        """
         add coordinates to dictionary
-        '''
+        """
 
         label = os.path.basename(coord['filename']).replace('.jpg','').replace('.JPG','')
-        self.gps_dict[ label ] = coord
+        self.gps_dict[label] = coord
 
     def addThumbnail(self, image, label):
-        '''
+        """
         add thumbnail to listview
-        '''
+        """
         configButton = QListWidgetItem(self.listWidget)
         configButton.setIcon(QIcon(QPixmap(image)))
+
+        print(label)
+        if label in self.gps_dict:
+            print( self.gps_dict[label] )
+
+        if label in self.gps_dict and self.gps_dict[label]['gps'] == (0, 0, 0):
+            b = QBrush()
+            b.setColor(QColor(255,0,0))
+            configButton.setForeground( b)
 
         configButton.setText(label)
 
@@ -410,21 +423,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def load_directory_activated(self):
 
         if self.changed:
-            response = MessageDialog('pyPhotoGeoTagger', 'Save positions to photos?', ['Yes', 'No', 'Cancel'])
+            response = MessageDialog("pyPhotoGeoTagger", "Save positions to photos?", ["Yes", "No", "Cancel"])
 
-            if response == 'Yes':
+            if response == "Yes":
                 self.save_positions()
 
-            if response == 'Cancel':
+            if response == "Cancel":
                 return
 
-        flags = QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly
-        directory = QFileDialog.getExistingDirectory(self, "Open Directory", os.getcwd(), flags)
-
-        '''
-        if directory:
-            self.load_directory(directory)
-        '''
+        directory = QFileDialog.getExistingDirectory(self, "Open Directory", os.getcwd(), QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly)
 
         self.longthread.picturesPath = directory
         self.longthread.start()
@@ -485,9 +492,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
     def save_positions(self):
-        '''
+        """
         save modified position to photo
-        '''
+        """
         if self.changed:
             for pic in self.changed:
                 metadata = pyexiv2.ImageMetadata(self.gps_dict[ pic ]['filename'])
@@ -528,9 +535,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.get_map(pictLat, pictLon, self.zoom)
 
     def get_map(self, lat, lon, zoom):
-        '''
+        """
         set leaflet with parameters latitude, longitude and zoom
-        '''
+        """
         if lat or lon:
             self.frame.evaluateJavaScript("map.setView([%f, %f], %d);" % (lat, lon, zoom))
 
@@ -550,7 +557,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         https://github.com/barmanoo/pyPhotoGeoTagger<br>
         <br>
         Python {pythonVersion} - Qt {qtVersion} - PyQt v. {pyqtVersion}""".format( \
-        programName='pyPhotoGeoTagger', version=__version__, versionDate=__version_date__,
+        programName="pyPhotoGeoTagger", version=__version__, versionDate=__version_date__,
          pythonVersion=platform.python_version(),
           qtVersion=QT_VERSION_STR, pyqtVersion=PYQT_VERSION_STR )
           )
@@ -562,7 +569,17 @@ if __name__ == "__main__":
 
     mainWindow = MainWindow()
     if len(sys.argv) > 1:
-        mainWindow.load_directory( os.path.abspath( sys.argv[1]) )
+
+        if os.path.isdir(os.path.abspath(sys.argv[1])):
+
+            longthread = MyLongThread()
+            longthread.finished.connect(mainWindow.terminated)
+            longthread.signal.coord.connect(mainWindow.addCoord)
+            longthread.signal.thumbnail.connect(mainWindow.addThumbnail)
+
+            longthread.picturesPath = os.path.abspath(sys.argv[1])
+            longthread.start()
+
 
     mainWindow.show()
     mainWindow.resize(800, 500)
