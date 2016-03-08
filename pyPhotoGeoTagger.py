@@ -19,12 +19,12 @@ This file is part of pyPhotoGeoTagger.
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation; either version 3 of the License, or
   any later version.
-  
+
   pyPhotoGeoTagger is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program; if not see <http://www.gnu.org/licenses/>.
 
@@ -80,7 +80,7 @@ try:
 except:
     print( 'pyexiv2 is not installed. See http://www.py3exiv2.tuxfamily.org')
     sys.exit(1)
-    
+
 
 from pyPhotoGeoTagger_ui import Ui_MainWindow
 
@@ -105,7 +105,7 @@ def decCoordinate(ref, coord):
     Convert degree, minutes coordinates to decimal coordinates
     '''
     deg, min, sec = coord.split(' ')
-   
+
     coordDec = eval(deg) + eval(min)/60 + eval(sec)/3600
 
     if ref in ['S','W']:
@@ -143,7 +143,7 @@ class Update(QObject):
 
         self.parent.zoom = int(message)
         self.parent.statusbar.showMessage('Zoom: %s ' % (message ), 0)
-    
+
 
 class ClickedPos(QObject):
     def __init__(self, parent=None):
@@ -155,16 +155,16 @@ class ClickedPos(QObject):
         '''
         obtain clicked position from leaflet
         '''
-        
+
         click_lat, click_long = [float(x) for x in message.split('|')]
         self.parent.statusbar.showMessage('Position %.6f, %.6f  ' % (click_lat, click_long ), 0)
-        
+
 
         if self.parent.listWidget.selectedItems():
             self.parent.removeAllMarkers()
 
         for item in self.parent.listWidget.selectedItems():
-            
+
             flagChanged = False
 
             if self.parent.gps_dict[ item.text() ]['gps'] == (0.0, 0.0, 0.0):
@@ -185,14 +185,14 @@ class ClickedPos(QObject):
 
                     id = item.text().replace('-','')
                     s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':click_lat, 'lon':click_long, 'id': id}
-    
+
                     self.parent.frame.evaluateJavaScript(s )
                     self.parent.memMarker.append( id )
 
                     self.parent.get_map(click_lat, click_long, self.parent.zoom)
 
                     self.parent.statusbar.showMessage('Set picture position %.6f, %.6f  ' % (click_lat, click_long ), 0)
-                    
+
                     self.parent.changed.append( item.text() )
 
 
@@ -253,7 +253,7 @@ class MyLongThread(QThread):
                 b.setColor(QColor(255,0,0))
                 configButton.setForeground( b)
             '''
-            
+
 
         '''
         if len(imgList) == 1:
@@ -267,7 +267,7 @@ class MyLongThread(QThread):
 class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __init__(self, parent=None):
-        
+
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
 
@@ -343,9 +343,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         '''
         configButton = QListWidgetItem(self.listWidget)
         configButton.setIcon(QIcon(QPixmap(image)))
-    
+
         configButton.setText(label)
-    
+
         configButton.setTextAlignment(Qt.AlignHCenter)
         configButton.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
 
@@ -381,9 +381,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.frame.evaluateJavaScript(s )
             self.memMarker.append( id )
 
-            self.get_map(self.memPosition[0], self.memPosition[1], self.parent.zoom)
+            self.get_map(self.memPosition[0], self.memPosition[1], self.zoom)
 
-            self.statusbar.showMessage('Set photo position %.6f, %.6f  ' % (self.memPosition[0], self.memPosition[1] ), 0)
+            self.statusbar.showMessage("Set photo position %.6f, %.6f  " % (self.memPosition[0], self.memPosition[1] ), 0)
 
 
             b = QBrush()
@@ -435,7 +435,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         '''
         load thumbnails of images from directory in listview widget
         '''
-        
+
         if os.path.isdir(path):
             imgList = sorted(glob.glob(path + '/*.jpg') + glob.glob(path + '/*.JPG'))
 
@@ -509,23 +509,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         '''
         for m in self.memMarker:
             self.frame.evaluateJavaScript("map.removeLayer(m%s);" % m )
-            
+
         self.memMarker = []
-        
+
 
     def itemSelectionChanged(self):
 
         self.removeAllMarkers()
 
         for item in self.listWidget.selectedItems():
-            pictLat, pictLon = self.gps_dict[ item.text() ]['gps'][0:2]
-            id = item.text().replace('-','')
-            s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':pictLat, 'lon':pictLon, 'id': id}
+            pictLat, pictLon = self.gps_dict[ item.text()]["gps"][0:2]
+            if pictLat or pictLon:
+                id = item.text().replace("-", "")
+                s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':pictLat, 'lon':pictLon, 'id': id}
 
-            self.frame.evaluateJavaScript(s )
-            self.memMarker.append( id )
-            self.get_map(pictLat, pictLon, self.zoom)
-
+                self.frame.evaluateJavaScript(s)
+                self.memMarker.append(id)
+                self.get_map(pictLat, pictLon, self.zoom)
 
     def get_map(self, lat, lon, zoom):
         '''
@@ -559,11 +559,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    
+
     mainWindow = MainWindow()
     if len(sys.argv) > 1:
         mainWindow.load_directory( os.path.abspath( sys.argv[1]) )
-    
+
     mainWindow.show()
     mainWindow.resize(800, 500)
     sys.exit(app.exec_())
