@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'pyPhotoGeoTagger.ui'
 #
-# Created: Sat Sep 12 13:42:28 2015
+# Created: Sun Mar 20 15:35:43 2016
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -61,8 +61,11 @@ class Ui_MainWindow(object):
         self.actionAbout.setObjectName(_fromUtf8("actionAbout"))
         self.actionQuit = QtGui.QAction(MainWindow)
         self.actionQuit.setObjectName(_fromUtf8("actionQuit"))
+        self.actionClear = QtGui.QAction(MainWindow)
+        self.actionClear.setObjectName(_fromUtf8("actionClear"))
         self.menuPhoto_geotag.addAction(self.actionLoad_photo_from_directory)
         self.menuPhoto_geotag.addAction(self.actionSave_positions_to_photo)
+        self.menuPhoto_geotag.addAction(self.actionClear)
         self.menuPhoto_geotag.addAction(self.actionQuit)
         self.menuHelp.addAction(self.actionAbout)
         self.menubar.addAction(self.menuPhoto_geotag.menuAction())
@@ -79,5 +82,6 @@ class Ui_MainWindow(object):
         self.actionLoad_photo_from_directory.setText(_translate("MainWindow", "Load photo from directory", None))
         self.actionAbout.setText(_translate("MainWindow", "About...", None))
         self.actionQuit.setText(_translate("MainWindow", "Quit", None))
+        self.actionClear.setText(_translate("MainWindow", "Clear", None))
 
 from PyQt4 import QtWebKit

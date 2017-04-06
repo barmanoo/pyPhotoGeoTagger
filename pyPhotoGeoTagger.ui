@@ -51,6 +51,7 @@
     </property>
     <addaction name="actionLoad_photo_from_directory"/>
     <addaction name="actionSave_positions_to_photo"/>
+    <addaction name="actionClear"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -81,6 +82,11 @@
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionClear">
+   <property name="text">
+    <string>Clear</string>
    </property>
   </action>
  </widget>

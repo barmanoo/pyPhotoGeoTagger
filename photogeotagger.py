@@ -1,37 +1,26 @@
 #!/usr/bin/env python3
-'''
 
-pyPhotoGeoTagger
-Copyright 2014-2016 Olivier Friard
 
-require python3
+import sys
+import os
+import glob
+import fractions
+import math
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtWebEngineWidgets import *
+from PyQt5.Qt import *
 
-usage:
-left button: save coordinates (latitude, longitude) of clicked pixel in selected picture
+try:
+    import pyexiv2
+except:
+    print("pyexiv2 is not installed. See http://python3-exiv2.readthedocs.io/en/latest/developers.html#getting-the-code")
+    sys.exit(1)
 
-based on Leaflet (http://leafletjs.com/)
-require pyexiv2: http://www.py3exiv2.tuxfamily.org
-pip3 install py3exiv2
+__version__ = 0.4
+__version_date__ = "2017-03-14"
 
-This file is part of pyPhotoGeoTagger.
-
-  pyPhotoGeoTagger is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 3 of the License, or
-  any later version.
-
-  pyPhotoGeoTagger is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not see <http://www.gnu.org/licenses/>.
-
-'''
-
-__version__ = 0.3
-__version_date__ = "2016-03-08"
 
 defaultServer= "tile.osm.org"
 #defaultServer =  'tile.opencyclemap.org/cycle'
@@ -41,7 +30,7 @@ THUMBNAIL_SIZE = 128
 defaultLat = 45.03
 defaultLon = 7.66
 defaultZoom = 12
-
+GPS = "Exif.GPSInfo.GPS"
 
 HTML = """
 <html>
@@ -49,6 +38,10 @@ HTML = """
 <body>
 <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
 <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>    
+new QWebChannel(qt.webChannelTransport, function (channel) { window.bridge = channel.objects.bridge;});
+</script>
 
 <div id="map"></div>
 
@@ -57,36 +50,15 @@ var map = L.map('map').setView([%(defaultLat)f, %(defaultLon)f], %(defaultZoom)f
 
 L.tileLayer('http://{s}.%(defaultServer)s/{z}/{x}/{y}.png', { attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
 
-map.on('click', function(e) {clickedPos.out(e.latlng.lat + "|" + e.latlng.lng)})
-map.on('moveend', function(e) {update.out( map.getZoom() ) })
+//map.on('moveend', function(e) {update.out( map.getZoom() ) })
+
+map.on('click', function(e) { window.bridge.print(e.latlng.lat + "|" + e.latlng.lng)})
+map.on('moveend', function(e) {window.bridge.get_zoom(map.getZoom())})
 
 </script>
 </body>
 </html>
 """ % globals()
-
-GPS = 'Exif.GPSInfo.GPS'
-
-import PyQt4
-from PyQt4.QtCore import *
-from PyQt4 import QtCore
-from PyQt4.QtGui import *
-import glob
-import os
-import sys
-import math
-import fractions
-
-try:
-    import pyexiv2
-except:
-    print( 'pyexiv2 is not installed. See http://www.py3exiv2.tuxfamily.org')
-    sys.exit(1)
-
-
-from pyPhotoGeoTagger_ui import Ui_MainWindow
-
-RED = QColor(255,0,0)
 
 
 class Fraction(fractions.Fraction):
@@ -101,26 +73,22 @@ def decimal_to_dms(decimal):
     remainder, minutes = math.modf(remainder * 60)
     return [Fraction(n) for n in (degrees, minutes, remainder * 60)]
 
-
 def decCoordinate(ref, coord):
     """
     Convert degree, minutes coordinates to decimal coordinates
     """
-    deg, min, sec = coord.split(' ')
-
+    deg, min, sec = coord.split(" ")
     coordDec = eval(deg) + eval(min)/60 + eval(sec)/3600
-
-    if ref in ['S','W']:
+    if ref in ["S", "W"]:
         coordDec =- coordDec
-
     return coordDec
 
 
 def MessageDialog(title, text, buttons):
-    '''
+    """
     show message dialog and return text of clicked button
-    '''
-    response = ''
+    """
+    response = ""
     message = QMessageBox()
     message.setWindowTitle(title)
     message.setText(text)
@@ -131,39 +99,44 @@ def MessageDialog(title, text, buttons):
     message.exec_()
     return message.clickedButton().text()
 
-class Update(QObject):
+class WebPage(QWebEnginePage):
+    
     def __init__(self, parent=None):
-        super(Update, self).__init__(parent)
+        super(WebPage, self).__init__(parent)
         self.parent = parent
 
-    @pyqtSlot(str)
+    def javaScriptConsoleMessage(self, level, msg, linenumber, source_id):
+        try:
+            print('%s:%s: %s' % (source_id, linenumber, msg))
+        except OSError:
+            pass
 
-    def out(self, message):
-        '''
+    @pyqtSlot(int)
+    def get_zoom(self, z):
+        """
         update zoom value from leaflet value
-        '''
+        """
 
-        self.parent.zoom = int(message)
-        self.parent.statusbar.showMessage('Zoom: %s ' % (message ), 0)
+        print("zoom", z)
+        self.parent.zoom = z
+        self.parent.statusbar.showMessage("Zoom: {}".format(z), 0)
 
-
-class ClickedPos(QObject):
-    def __init__(self, parent=None):
-        super(ClickedPos, self).__init__(parent)
-        self.parent = parent
 
     @pyqtSlot(str)
-    def out(self, message):
-        '''
-        obtain clicked position from leaflet
-        '''
+    def print(self, text):
+        print('From JS:', text)
+        
+        click_lat, click_long = [float(x) for x in text.split('|')]
+        print(click_lat, click_long)
 
-        click_lat, click_long = [float(x) for x in message.split('|')]
+        
         self.parent.statusbar.showMessage('Position %.6f, %.6f  ' % (click_lat, click_long ), 0)
 
 
+        '''
         if self.parent.listWidget.selectedItems():
             self.parent.removeAllMarkers()
+        '''
 
         for item in self.parent.listWidget.selectedItems():
 
@@ -178,22 +151,23 @@ class ClickedPos(QObject):
 
             else:
 
-                if MessageDialog('photoGeoTagger', 'Replace current position?', ['Yes', 'No']) == 'Yes':
+                if MessageDialog("photoGeoTagger", "Replace current position?", ['Yes', 'No']) == 'Yes':
                     flagChanged = True
 
             if flagChanged:
 
                     self.parent.gps_dict[ item.text()]['gps'] = ( click_lat, click_long,  0.0)
 
-                    id = item.text().replace('-','')
+                    id = item.text().replace("-", "")
                     s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':click_lat, 'lon':click_long, 'id': id}
 
-                    self.parent.frame.evaluateJavaScript(s )
-                    self.parent.memMarker.append( id )
+                    #self.parent.frame.evaluateJavaScript(s )
+                    self.parent.browser.page().runJavaScript(s)
+                    self.parent.memMarker.append(id)
 
                     self.parent.get_map(click_lat, click_long, self.parent.zoom)
 
-                    self.parent.statusbar.showMessage('Set picture position %.6f, %.6f  ' % (click_lat, click_long ), 0)
+                    self.parent.statusbar.showMessage("Set picture position %.6f, %.6f  " % (click_lat, click_long ), 0)
 
                     self.parent.changed.append( item.text() )
 
@@ -268,69 +242,125 @@ class MyLongThread(QThread):
         '''self.signal.sig.emit('OK')'''
 
 
-class MainWindow(QMainWindow, Ui_MainWindow):
 
+class MainWindow(QMainWindow):
+    
+
+    
     def __init__(self, parent=None):
-
         super(MainWindow, self).__init__(parent)
-        self.setupUi(self)
-
-        self.setWindowTitle('pyPhotoGeoTagger')
 
         self.changed = []
 
-        self.listWidget.setViewMode(QListView.IconMode)
-        self.listWidget.setIconSize(QSize(128, 128))
-        self.listWidget.setMovement(QListView.Static)
-        self.listWidget.setMaximumWidth(256)
-        self.listWidget.setSpacing(12)
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
 
-        self.listWidget.setContextMenuPolicy(Qt.ActionsContextMenu)
-        self.actionCopyPosition = QAction("Copy position", self.listWidget)
-        self.actionPastePosition = QAction("Paste position", self.listWidget)
-        self.listWidget.addAction(self.actionCopyPosition)
-        self.listWidget.addAction(self.actionPastePosition)
-        self.connect(self.actionCopyPosition, SIGNAL("triggered()"), self.copyPosition)
-        self.connect(self.actionPastePosition, SIGNAL("triggered()"), self.pastePosition)
+        self.actionLoad_photo_from_directory = QAction("Load photos from directory", self)
+        self.actionLoad_photo_from_directory.setObjectName("actionLoad_photo_from_directory")
 
-        self.listWidget.itemSelectionChanged.connect(self.itemSelectionChanged)
+        self.actionSave_positions_to_photo = QAction("Save positions to photos", self)
+        self.actionSave_positions_to_photo.setObjectName("actionSave_positions_to_photo")
 
-        # menu
-        self.actionSave_positions_to_photo.activated.connect(self.save_positions)
-        self.actionLoad_photo_from_directory.activated.connect(self.load_directory_activated)
-        self.actionQuit.activated.connect(self.close)
+
+        self.actionClear = QAction("Clear", self)
+        self.actionClear.setObjectName("actionClear")
+
+        exitAction = QAction(QIcon('exit.png'), '&Exit', self)
+        exitAction.setShortcut('Ctrl+Q')
+        exitAction.setStatusTip('Exit application')
+        exitAction.triggered.connect(qApp.quit)
+
+        fileMenu.addAction(self.actionLoad_photo_from_directory)
+        fileMenu.addAction(self.actionSave_positions_to_photo)
+        fileMenu.addAction(self.actionClear)
+        fileMenu.addAction(exitAction)
+        
+        menuHelp = menubar.addMenu('&Help')
+
+        self.actionAbout = QAction("About", self)
+        self.actionAbout.setObjectName("actionAbout")
+        menuHelp.addAction(self.actionAbout)
+
+        '''self.menubar.addAction(self.menuPhoto_geotag.menuAction())
+        self.menubar.addAction(self.menuHelp.menuAction())
+        '''
+
+        self.actionSave_positions_to_photo.triggered.connect(self.save_positions)
+        self.actionLoad_photo_from_directory.triggered.connect(self.load_directory_activated)
+        self.actionClear.triggered.connect(self.clear)
 
         self.actionAbout.triggered.connect(self.actionAbout_activated)
 
-        self.gps_dict = {}
-
-        self.frame = self.webView.page().mainFrame()
-        clickedPos = ClickedPos(self)
-        update = Update(self)
-        self.webView.setHtml(HTML)
-        self.frame.addToJavaScriptWindowObject('clickedPos', clickedPos)
-        self.frame.addToJavaScriptWindowObject('update', update)
-
+        self.statusbar = QStatusBar(self)
+        self.setStatusBar(self.statusbar)
+        self.statusbar.showMessage('ciao', 0)
 
         self.longthread = MyLongThread()
         self.longthread.finished.connect(self.terminated)
         self.longthread.signal.coord.connect(self.addCoord)
         self.longthread.signal.thumbnail.connect(self.addThumbnail)
-
-
+        
+        self.gps_dict = {}
         self.lat = defaultLat
         self.long = defaultLon
         self.zoom = defaultZoom
-        self.memPosition = (0,0,0)
-
-        # list of markers on leaflet
+        self.memPosition = (0, 0, 0)
+        
         self.memMarker = []
 
+        _widget = QWidget()
+
+        self.vbox = QVBoxLayout()
+        self.hbox = QHBoxLayout()
+
+        self.splitter = QSplitter(_widget)
+        self.splitter.setOrientation(Qt.Horizontal)
+
+        self.listWidget = QListWidget(self.splitter)
+        self.listWidget.width()
+        self.listWidget.setViewMode(QListView.IconMode)
+        self.listWidget.setIconSize(QSize(128, 128))
+        self.listWidget.setMovement(QListView.Static)
+        self.listWidget.setMaximumWidth(256)
+        self.listWidget.setSpacing(12)
+        self.listWidget.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        
+        self.listWidget.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.actionCopyPosition = QAction("Copy position", self.listWidget)
+        self.actionPastePosition = QAction("Paste position", self.listWidget)
+        self.listWidget.addAction(self.actionCopyPosition)
+        self.listWidget.addAction(self.actionPastePosition)
+        self.actionCopyPosition.triggered.connect(self.copyPosition)
+        self.actionPastePosition.triggered.connect(self.pastePosition)
+
+        self.listWidget.itemSelectionChanged.connect(self.itemSelectionChanged)
+        
+        
+        self.hbox.addWidget(self.listWidget)
+
+        self.browser = QWebEngineView(self.splitter)
+        self.p = WebPage(self)
+        self.browser.setPage(self.p)
+        c = QWebChannel(self)
+        c.registerObject('bridge', self.p)
+        self.p.setWebChannel(c)
+        self.browser.setHtml(HTML)
+
+        
+        self.hbox.addWidget(self.browser)
+        self.hbox.addWidget(self.splitter)
+        self.vbox.addLayout(self.hbox)
+        _widget.setLayout(self.vbox)
+
+        self.setCentralWidget(_widget)
+
+
     def terminated(self):
-        '''
+        """
         longthread terminated
-        '''
-        self.statusbar.showMessage('Directory loaded' )
+        """
+        self.listWidget.setMinimumWidth(self.listWidget.sizeHintForColumn(0))
+        self.statusbar.showMessage("Photos loaded from directory")
 
 
     def addCoord(self, coord):
@@ -362,17 +392,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         configButton.setTextAlignment(Qt.AlignHCenter)
         configButton.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
 
-
     def copyPosition(self):
 
         if len(self.listWidget.selectedItems()) == 1:
 
             self.memPosition = self.gps_dict[ self.listWidget.selectedItems()[0].text() ]['gps']
             if self.memPosition != (0,0,0):
-                self.statusbar.showMessage('Copied position '+str(self.memPosition)  , 5000)
+                self.statusbar.showMessage('Copied position ' + str(self.memPosition)  , 5000)
             else:
-                self.statusbar.showMessage('Photo do not contain position' , 5000)
-
+                self.statusbar.showMessage('Photo do not contain position', 5000)
 
 
     def pastePosition(self):
@@ -391,104 +419,40 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             id = item.text().replace('-','')
             s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':self.memPosition[0], 'lon':self.memPosition[1], 'id': id}
 
-            self.frame.evaluateJavaScript(s )
+            #self.frame.evaluateJavaScript(s )
+
+            self.browser.page().runJavaScript(s)
             self.memMarker.append( id )
 
             self.get_map(self.memPosition[0], self.memPosition[1], self.zoom)
 
             self.statusbar.showMessage("Set photo position %.6f, %.6f  " % (self.memPosition[0], self.memPosition[1] ), 0)
 
-
             b = QBrush()
             b.setColor(QColor(0,0,0))
             item.setForeground( b)
 
 
-
-    def closeEvent(self, event):
+    def actionAbout_activated(self):
         '''
-        check if pictures position are saved and close program
+        about window
         '''
+        import platform
 
-        if self.changed:
-            response = MessageDialog('pyPhotoGeoTagger', 'Save positions to photos?', ['Yes', 'No', 'Cancel'])
+        QMessageBox.about(self, "About PhotoGeoTagger",
+        """<b>{programName}</b><br>
+        v. {version} - {versionDate}<br>
+        <br>
+        Copyright 2014-2017 Olivier Friard<br>
+        <br>
+        https://github.com/barmanoo/pyPhotoGeoTagger<br>
+        <br>
+        Python {pythonVersion} - Qt {qtVersion} - PyQt v. {pyqtVersion}""".format( 
+        programName="pyPhotoGeoTagger", version=__version__, versionDate=__version_date__,
+         pythonVersion=platform.python_version(),
+          qtVersion=QT_VERSION_STR, pyqtVersion=PYQT_VERSION_STR )
+          )
 
-            if response == 'Yes':
-                self.save_positions()
-
-            if response == 'Cancel':
-                event.ignore()
-
-
-    def load_directory_activated(self):
-
-        if self.changed:
-            response = MessageDialog("pyPhotoGeoTagger", "Save positions to photos?", ["Yes", "No", "Cancel"])
-
-            if response == "Yes":
-                self.save_positions()
-
-            if response == "Cancel":
-                return
-
-        directory = QFileDialog.getExistingDirectory(self, "Open Directory", os.getcwd(), QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly)
-
-        self.longthread.picturesPath = directory
-        self.longthread.start()
-
-
-    """
-    def load_directory(self, path):
-        '''
-        load thumbnails of images from directory in listview widget
-        '''
-
-        if os.path.isdir(path):
-            imgList = sorted(glob.glob(path + '/*.jpg') + glob.glob(path + '/*.JPG'))
-
-        if os.path.isfile(path):
-            imgList = [ path ]
-
-        self.listWidget.clear()
-        self.changed =  []
-
-        for pic in sorted(imgList):
-            print('processing %s' % pic)
-            configButton = QListWidgetItem(self.listWidget)
-            configButton.setIcon(QIcon(QPixmap(pic).scaledToWidth(128)))
-
-            label = os.path.basename(pic).replace('.jpg','').replace('.JPG','')
-            configButton.setText(label)
-
-            configButton.setTextAlignment(Qt.AlignHCenter)
-            configButton.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-
-            # read GPS exif tag
-            metadata = pyexiv2.ImageMetadata(pic)
-            metadata.read()
-            latRaw, lonRaw = 0, 0
-            try:
-                latRaw = metadata['Exif.GPSInfo.GPSLatitude'].raw_value
-                latRef = metadata['Exif.GPSInfo.GPSLatitudeRef'].raw_value
-                lonRaw = metadata['Exif.GPSInfo.GPSLongitude'].raw_value
-                lonRef = metadata['Exif.GPSInfo.GPSLongitudeRef'].raw_value
-            except KeyError:
-                pass
-
-            if latRaw and lonRaw:
-                self.gps_dict[ label ] = {'gps': (decCoordinate(latRef, latRaw), decCoordinate(lonRef, lonRaw), 0.0),  'filename': pic}
-            else:
-                self.gps_dict[ label ] = {'gps': (0, 0, 0), 'filename': pic}
-
-            # filename in red for pictures with no location
-            if self.gps_dict[ label]['gps'] == (0, 0, 0):
-                b = QBrush()
-                b.setColor(RED)
-                configButton.setForeground( b)
-
-        if len(imgList) == 1:
-            self.listWidget.setCurrentItem(self.listWidget.item(0))
-        """
 
 
     def save_positions(self):
@@ -506,23 +470,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 metadata[GPS + 'LongitudeRef'] = 'E' if self.gps_dict[ pic ]['gps'][1] >= 0 else 'W'
                 metadata.write()
 
-            self.statusbar.showMessage('Picture positions saved', 5000)
+            self.statusbar.showMessage('Positions saved in photos', 5000)
             self.changed = []
-
 
     def removeAllMarkers(self):
         '''
         remove all markers from leaflet
         '''
         for m in self.memMarker:
-            self.frame.evaluateJavaScript("map.removeLayer(m%s);" % m )
+            self.browser.page().runJavaScript("map.removeLayer({});".format(m))
 
         self.memMarker = []
 
-
     def itemSelectionChanged(self):
 
-        self.removeAllMarkers()
+        '''self.removeAllMarkers()'''
 
         for item in self.listWidget.selectedItems():
             pictLat, pictLon = self.gps_dict[ item.text()]["gps"][0:2]
@@ -530,7 +492,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 id = item.text().replace("-", "")
                 s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':pictLat, 'lon':pictLon, 'id': id}
 
-                self.frame.evaluateJavaScript(s)
+                #self.frame.evaluateJavaScript(s)
+                self.browser.page().runJavaScript(s)
                 self.memMarker.append(id)
                 self.get_map(pictLat, pictLon, self.zoom)
 
@@ -539,48 +502,65 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         set leaflet with parameters latitude, longitude and zoom
         """
         if lat or lon:
-            self.frame.evaluateJavaScript("map.setView([%f, %f], %d);" % (lat, lon, zoom))
+            #self.frame.evaluateJavaScript("map.setView([%f, %f], %d);" % (lat, lon, zoom))
+            self.browser.page().runJavaScript("map.setView([%f, %f], %d);" % (lat, lon, zoom))
 
 
-    def actionAbout_activated(self):
+
+    def load_directory_activated(self):
+
+        if self.changed:
+            response = MessageDialog("PhotoGeoTagger", "Save positions to photos?", ["Yes", "No", "Cancel"])
+
+            if response == "Yes":
+                self.save_positions()
+
+            if response == "Cancel":
+                return
+
+        directory = QFileDialog.getExistingDirectory(self, "Open Directory", os.getcwd(), QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly)
+
+        self.longthread.picturesPath = directory
+        self.longthread.start()
+
+    def closeEvent(self, event):
         '''
-        about window
+        check if pictures position are saved and close program
         '''
-        import platform
-        from PyQt4.QtCore import QT_VERSION_STR
 
-        QMessageBox.about(self, "About pyPhotoGeoTagger",
-        """<b>{programName}</b><br>
-        v. {version} - {versionDate}<br>
-        Copyright &copy; 2014-2015 Olivier Friard<br>
-        <br>
-        https://github.com/barmanoo/pyPhotoGeoTagger<br>
-        <br>
-        Python {pythonVersion} - Qt {qtVersion} - PyQt v. {pyqtVersion}""".format( \
-        programName="pyPhotoGeoTagger", version=__version__, versionDate=__version_date__,
-         pythonVersion=platform.python_version(),
-          qtVersion=QT_VERSION_STR, pyqtVersion=PYQT_VERSION_STR )
-          )
+        if self.changed:
+            response = MessageDialog('pyPhotoGeoTagger', 'Save positions to photos?', ['Yes', 'No', 'Cancel'])
+
+            if response == 'Yes':
+                self.save_positions()
+
+            if response == 'Cancel':
+                event.ignore()
 
 
+    def clear(self):
+        """
+        clear list view
+        """
+        self.gps_dict = {}
+        self.listWidget.clear()
 
-if __name__ == "__main__":
+
+def main():
     app = QApplication(sys.argv)
-
-    mainWindow = MainWindow()
+    win = MainWindow()
     if len(sys.argv) > 1:
-
-        if os.path.isdir(os.path.abspath(sys.argv[1])):
-
+        if os.path.isdir(os.path.abspath(sys.argv[1])) or os.path.isfile(os.path.abspath(sys.argv[1])):
             longthread = MyLongThread()
-            longthread.finished.connect(mainWindow.terminated)
-            longthread.signal.coord.connect(mainWindow.addCoord)
-            longthread.signal.thumbnail.connect(mainWindow.addThumbnail)
-
+            longthread.finished.connect(win.terminated)
+            longthread.signal.coord.connect(win.addCoord)
+            longthread.signal.thumbnail.connect(win.addThumbnail)
             longthread.picturesPath = os.path.abspath(sys.argv[1])
             longthread.start()
 
+    win.show()
+    app.exec_()
 
-    mainWindow.show()
-    mainWindow.resize(800, 500)
-    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    sys.exit(main())
