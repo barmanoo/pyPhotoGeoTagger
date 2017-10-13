@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+PhotoGeoTagger allows to add a geographic position to picture (geotag).
+The geographic position is saved in the EXIF metadata of the picture.
+
+
+apt install libexiv2-dev exiv2
+apt-get install libboost-all-dev
+pip3 install py3exiv2
+"""
 
 import sys
 import os
