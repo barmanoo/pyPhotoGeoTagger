@@ -35,11 +35,11 @@ __version_date__ = "2018-09-25"
 
 # defaultServer= "http://tile.osm.org/{z}/{x}/{y}.png"
 #defaultServer =  'http://tile.opencyclemap.org/cycle/{z}/{x}/{y}.png'
-defaultServer =  'https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267'
+defaultServer =  'https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey='
 
-tiles_server = {"Outdoors": "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267",
-                "OpenCycleMap": "https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267",
-                "Landscape": "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 ", 
+tiles_server = {"Outdoors": "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=",
+                "OpenCycleMap": "https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=",
+                "Landscape": "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=", 
 }
 
 defaultServer = tiles_server["Outdoors"]
@@ -47,23 +47,23 @@ defaultServer = tiles_server["Outdoors"]
 '''
 
 OpenCycleMap
-    https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey= 
 Transport
-    https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey= 
 Landscape
-    https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey= 
 Outdoors
-    https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey= 
 Transport Dark
-    https://tile.thunderforest.com/transport-dark/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/transport-dark/{z}/{x}/{y}.png?apikey= 
 Spinal Map
-    https://tile.thunderforest.com/spinal-map/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/spinal-map/{z}/{x}/{y}.png?apikey= 
 Pioneer
-    https://tile.thunderforest.com/pioneer/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/pioneer/{z}/{x}/{y}.png?apikey= 
 Mobile Atlas
-    https://tile.thunderforest.com/mobile-atlas/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/mobile-atlas/{z}/{x}/{y}.png?apikey= 
 Neighbourhood
-    https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+    https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey= 
 '''
 
 THUMBNAIL_SIZE = 128
