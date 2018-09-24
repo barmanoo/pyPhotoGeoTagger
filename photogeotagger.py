@@ -1,13 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 
 """
 PhotoGeoTagger allows to add a geographic position to picture (geotag).
 The geographic position is saved in the EXIF metadata of the picture.
 
 
-apt install libexiv2-dev exiv2
-apt-get install libboost-all-dev
+apt install libexiv2-dev exiv2 libboost-all-dev
 pip3 install py3exiv2
+
+change the tile layer:
+https://stackoverflow.com/questions/33759578/how-to-change-base-layer-using-js-and-leaflet-layers-control
 """
 
 import sys
@@ -24,15 +26,45 @@ from PyQt5.Qt import *
 try:
     import pyexiv2
 except:
-    print("pyexiv2 is not installed. See http://python3-exiv2.readthedocs.io/en/latest/developers.html#getting-the-code")
+    print("pyexiv2 is not installed. ")
     sys.exit(1)
 
-__version__ = 0.4
-__version_date__ = "2017-03-14"
+__version__ = 0.5
+__version_date__ = "2018-09-25"
 
 
-defaultServer= "tile.osm.org"
-#defaultServer =  'tile.opencyclemap.org/cycle'
+# defaultServer= "http://tile.osm.org/{z}/{x}/{y}.png"
+#defaultServer =  'http://tile.opencyclemap.org/cycle/{z}/{x}/{y}.png'
+defaultServer =  'https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267'
+
+tiles_server = {"Outdoors": "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267",
+                "OpenCycleMap": "https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267",
+                "Landscape": "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 ", 
+}
+
+defaultServer = tiles_server["Outdoors"]
+
+'''
+
+OpenCycleMap
+    https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Transport
+    https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Landscape
+    https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Outdoors
+    https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Transport Dark
+    https://tile.thunderforest.com/transport-dark/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Spinal Map
+    https://tile.thunderforest.com/spinal-map/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Pioneer
+    https://tile.thunderforest.com/pioneer/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Mobile Atlas
+    https://tile.thunderforest.com/mobile-atlas/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+Neighbourhood
+    https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=4e01f06b4cee460f8127a02299430267 
+'''
 
 THUMBNAIL_SIZE = 128
 
@@ -43,10 +75,11 @@ GPS = "Exif.GPSInfo.GPS"
 
 HTML = """
 <html>
-<head><style>#map { position:absolute; left:0; top:0; bottom:0; width:100%%; }</style></head>
+<head>
+<style>#map { position:absolute; left:0; top:0; bottom:0; width:100%%; }</style></head>
 <body>
-<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
-<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" />
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 <script>    
 new QWebChannel(qt.webChannelTransport, function (channel) { window.bridge = channel.objects.bridge;});
@@ -57,9 +90,7 @@ new QWebChannel(qt.webChannelTransport, function (channel) { window.bridge = cha
 <script>
 var map = L.map('map').setView([%(defaultLat)f, %(defaultLon)f], %(defaultZoom)f);
 
-L.tileLayer('http://{s}.%(defaultServer)s/{z}/{x}/{y}.png', { attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
-
-//map.on('moveend', function(e) {update.out( map.getZoom() ) })
+L.tileLayer('%(defaultServer)s', { attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
 
 map.on('click', function(e) { window.bridge.print(e.latlng.lat + "|" + e.latlng.lng)})
 map.on('moveend', function(e) {window.bridge.get_zoom(map.getZoom())})
@@ -107,6 +138,7 @@ def MessageDialog(title, text, buttons):
 
     message.exec_()
     return message.clickedButton().text()
+
 
 class WebPage(QWebEnginePage):
     
@@ -170,7 +202,6 @@ class WebPage(QWebEnginePage):
                     id = item.text().replace("-", "")
                     s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':click_lat, 'lon':click_long, 'id': id}
 
-                    #self.parent.frame.evaluateJavaScript(s )
                     self.parent.browser.page().runJavaScript(s)
                     self.parent.memMarker.append(id)
 
@@ -188,10 +219,11 @@ class MySignal(QObject):
 
 
 class MyLongThread(QThread):
+
     def __init__(self, parent = None):
-            QThread.__init__(self, parent)
-            self.picturesPath = ""
-            self.signal = MySignal()
+        QThread.__init__(self, parent)
+        self.picturesPath = ""
+        self.signal = MySignal()
 
     def run(self):
 
@@ -253,9 +285,7 @@ class MyLongThread(QThread):
 
 
 class MainWindow(QMainWindow):
-    
 
-    
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
 
@@ -270,7 +300,6 @@ class MainWindow(QMainWindow):
         self.actionSave_positions_to_photo = QAction("Save positions to photos", self)
         self.actionSave_positions_to_photo.setObjectName("actionSave_positions_to_photo")
 
-
         self.actionClear = QAction("Clear", self)
         self.actionClear.setObjectName("actionClear")
 
@@ -283,6 +312,11 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(self.actionSave_positions_to_photo)
         fileMenu.addAction(self.actionClear)
         fileMenu.addAction(exitAction)
+        
+        fileMenu = menubar.addMenu('&Preferences')
+        actionServer = QAction("Tile server", self)
+        actionServer.triggered.connect(self.select_tiles_server)
+        fileMenu.addAction(actionServer)
         
         menuHelp = menubar.addMenu('&Help')
 
@@ -302,7 +336,6 @@ class MainWindow(QMainWindow):
 
         self.statusbar = QStatusBar(self)
         self.setStatusBar(self.statusbar)
-        self.statusbar.showMessage('ciao', 0)
 
         self.longthread = MyLongThread()
         self.longthread.finished.connect(self.terminated)
@@ -336,18 +369,24 @@ class MainWindow(QMainWindow):
         
         self.listWidget.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.actionCopyPosition = QAction("Copy position", self.listWidget)
-        self.actionPastePosition = QAction("Paste position", self.listWidget)
         self.listWidget.addAction(self.actionCopyPosition)
-        self.listWidget.addAction(self.actionPastePosition)
         self.actionCopyPosition.triggered.connect(self.copyPosition)
+
+        self.actionPastePosition = QAction("Paste position", self.listWidget)
+        self.listWidget.addAction(self.actionPastePosition)
         self.actionPastePosition.triggered.connect(self.pastePosition)
+
+        self.actionDeletePosition = QAction("Delete position", self.listWidget)
+        self.listWidget.addAction(self.actionDeletePosition)
+        self.actionDeletePosition.triggered.connect(self.delete_position)
+
 
         self.listWidget.itemSelectionChanged.connect(self.itemSelectionChanged)
         
-        
         self.hbox.addWidget(self.listWidget)
 
-        self.browser = QWebEngineView(self.splitter)
+        # self.browser = QWebEngineView(self.splitter)
+        self.browser = QWebEngineView()
         self.p = WebPage(self)
         self.browser.setPage(self.p)
         c = QWebChannel(self)
@@ -357,12 +396,20 @@ class MainWindow(QMainWindow):
 
         
         self.hbox.addWidget(self.browser)
-        self.hbox.addWidget(self.splitter)
+        # self.hbox.addWidget(self.splitter)
         self.vbox.addLayout(self.hbox)
         _widget.setLayout(self.vbox)
 
         self.setCentralWidget(_widget)
 
+
+    def select_tiles_server(self):
+        item, ok = QInputDialog.getItem(self, "select a tiles server", "Servers", tiles_server.keys(), 0, False)
+
+        if ok and item:
+           print(item)
+           s = "L.tileLayer('{}').addTo(map);".format(tiles_server[item])
+           self.browser.page().runJavaScript(s)
 
     def terminated(self):
         """
@@ -415,23 +462,25 @@ class MainWindow(QMainWindow):
     def pastePosition(self):
 
         if self.memPosition == (0,0,0):
-            self.statusbar.showMessage('No position in clipboard' , 5000)
+            self.statusbar.showMessage("No position in clipboard" , 5000)
             return
 
         if self.listWidget.selectedItems():
             self.removeAllMarkers()
 
         for item in self.listWidget.selectedItems():
-            self.gps_dict[ item.text() ]['gps'] = self.memPosition
-            self.changed.append( item.text())
+            self.gps_dict[item.text()]['gps'] = self.memPosition
+            self.changed.append(item.text())
 
-            id = item.text().replace('-','')
-            s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':self.memPosition[0], 'lon':self.memPosition[1], 'id': id}
-
-            #self.frame.evaluateJavaScript(s )
+            id_ = item.text().replace("-", "")
+            s = ("m{id_} = new L.Marker([{lat}, {lon}], {{draggable:true}});"
+                 "map.addLayer(m{id_});"
+                 "m{id_}.bindPopup('{id_}').openPopup();").format(lat=self.memPosition[0],
+                                                                lon=self.memPosition[1],
+                                                                id_=id_)
 
             self.browser.page().runJavaScript(s)
-            self.memMarker.append( id )
+            self.memMarker.append(id_)
 
             self.get_map(self.memPosition[0], self.memPosition[1], self.zoom)
 
@@ -440,6 +489,17 @@ class MainWindow(QMainWindow):
             b = QBrush()
             b.setColor(QColor(0,0,0))
             item.setForeground( b)
+
+
+    def delete_position(self):
+        """
+        delete position from exif metadata
+        """
+        for item in self.listWidget.selectedItems():
+            self.gps_dict[item.text()]['gps'] = (0, 0, 0)
+            self.changed.append(item.text())
+            self.browser.page().runJavaScript("map.removeLayer({});".format(item.text()))
+            self.memMarker.remove(item.text())
 
 
     def actionAbout_activated(self):
@@ -470,17 +530,18 @@ class MainWindow(QMainWindow):
         """
         if self.changed:
             for pic in self.changed:
-                metadata = pyexiv2.ImageMetadata(self.gps_dict[ pic ]['filename'])
+                metadata = pyexiv2.ImageMetadata(self.gps_dict[pic]["filename"])
                 metadata.read()
 
-                metadata[GPS + 'Latitude']     = decimal_to_dms(self.gps_dict[ pic ]['gps'][0])
-                metadata[GPS + 'LatitudeRef']  = 'N' if self.gps_dict[ pic ]['gps'][0] >= 0 else 'S'
-                metadata[GPS + 'Longitude']    = decimal_to_dms(self.gps_dict[ pic ]['gps'][1])
+                metadata[GPS + 'Latitude'] = decimal_to_dms(self.gps_dict[ pic ]['gps'][0])
+                metadata[GPS + 'LatitudeRef'] = 'N' if self.gps_dict[ pic ]['gps'][0] >= 0 else 'S'
+                metadata[GPS + 'Longitude'] = decimal_to_dms(self.gps_dict[ pic ]['gps'][1])
                 metadata[GPS + 'LongitudeRef'] = 'E' if self.gps_dict[ pic ]['gps'][1] >= 0 else 'W'
                 metadata.write()
 
             self.statusbar.showMessage('Positions saved in photos', 5000)
             self.changed = []
+
 
     def removeAllMarkers(self):
         '''
@@ -488,8 +549,8 @@ class MainWindow(QMainWindow):
         '''
         for m in self.memMarker:
             self.browser.page().runJavaScript("map.removeLayer({});".format(m))
-
         self.memMarker = []
+
 
     def itemSelectionChanged(self):
 
@@ -506,6 +567,7 @@ class MainWindow(QMainWindow):
                 self.memMarker.append(id)
                 self.get_map(pictLat, pictLon, self.zoom)
 
+
     def get_map(self, lat, lon, zoom):
         """
         set leaflet with parameters latitude, longitude and zoom
@@ -515,22 +577,22 @@ class MainWindow(QMainWindow):
             self.browser.page().runJavaScript("map.setView([%f, %f], %d);" % (lat, lon, zoom))
 
 
-
     def load_directory_activated(self):
 
         if self.changed:
             response = MessageDialog("PhotoGeoTagger", "Save positions to photos?", ["Yes", "No", "Cancel"])
-
             if response == "Yes":
                 self.save_positions()
-
             if response == "Cancel":
                 return
 
-        directory = QFileDialog.getExistingDirectory(self, "Open Directory", os.getcwd(), QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly)
+        directory = QFileDialog.getExistingDirectory(self, "Open Directory",
+                                                     os.getcwd(),
+                                                     QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly)
 
         self.longthread.picturesPath = directory
         self.longthread.start()
+
 
     def closeEvent(self, event):
         '''
@@ -538,19 +600,27 @@ class MainWindow(QMainWindow):
         '''
 
         if self.changed:
-            response = MessageDialog('pyPhotoGeoTagger', 'Save positions to photos?', ['Yes', 'No', 'Cancel'])
-
+            response = MessageDialog('PhotoGeoTagger', 'Save positions to photos?', ['Yes', 'No', 'Cancel'])
             if response == 'Yes':
                 self.save_positions()
-
             if response == 'Cancel':
                 event.ignore()
-
 
     def clear(self):
         """
         clear list view
         """
+
+        if self.changed:
+            response = MessageDialog('PhotoGeoTagger', 'Save positions to photos?', ['Yes', 'No', 'Cancel'])
+            if response == "Yes":
+                self.save_positions()
+            if response == "Cancel":
+                return
+
+        self.removeAllMarkers()
+
+        self.changed = []
         self.gps_dict = {}
         self.listWidget.clear()
 
@@ -558,6 +628,7 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     win = MainWindow()
+    win.showMaximized()
     if len(sys.argv) > 1:
         if os.path.isdir(os.path.abspath(sys.argv[1])) or os.path.isfile(os.path.abspath(sys.argv[1])):
             longthread = MyLongThread()
