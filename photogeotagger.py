@@ -32,39 +32,17 @@ except:
 __version__ = 0.5
 __version_date__ = "2018-09-25"
 
+THUNDERFOREST_API_KEY = os.environ["TF_API_KEY"]
+MAPBOX_TOKEN = os.environ["MAPBOX_TOKEN"]
 
-# defaultServer= "http://tile.osm.org/{z}/{x}/{y}.png"
-#defaultServer =  'http://tile.opencyclemap.org/cycle/{z}/{x}/{y}.png'
-defaultServer =  'https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey='
-
-tiles_server = {"Outdoors": "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=",
-                "OpenCycleMap": "https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=",
-                "Landscape": "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=", 
+tiles_server = {"Outdoors": f"https://tile.thunderforest.com/outdoors/{{z}}/{{x}}/{{y}}.png?apikey={THUNDERFOREST_API_KEY}",
+                "OpenCycleMap": f"https://tile.thunderforest.com/cycle/{{z}}/{{x}}/{{y}}.png?apikey={THUNDERFOREST_API_KEY}",
+                "Landscape": f"https://tile.thunderforest.com/landscape/{{z}}/{{x}}/{{y}}.png?apikey={THUNDERFOREST_API_KEY}", 
+                "OSM": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "mapbox": f"https://api.tiles.mapbox.com/v4/{{id}}/{{z}}/{{x}}/{{y}}.png?access_token={MAPBOX_TOKEN}",
 }
 
-defaultServer = tiles_server["Outdoors"]
-
-'''
-
-OpenCycleMap
-    https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey= 
-Transport
-    https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey= 
-Landscape
-    https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey= 
-Outdoors
-    https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey= 
-Transport Dark
-    https://tile.thunderforest.com/transport-dark/{z}/{x}/{y}.png?apikey= 
-Spinal Map
-    https://tile.thunderforest.com/spinal-map/{z}/{x}/{y}.png?apikey= 
-Pioneer
-    https://tile.thunderforest.com/pioneer/{z}/{x}/{y}.png?apikey= 
-Mobile Atlas
-    https://tile.thunderforest.com/mobile-atlas/{z}/{x}/{y}.png?apikey= 
-Neighbourhood
-    https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey= 
-'''
+defaultServer = tiles_server["mapbox"]
 
 THUMBNAIL_SIZE = 128
 
@@ -511,8 +489,7 @@ class MainWindow(QMainWindow):
         QMessageBox.about(self, "About PhotoGeoTagger",
         """<b>{programName}</b><br>
         v. {version} - {versionDate}<br>
-        <br>
-        Copyright 2014-2017 Olivier Friard<br>
+        Copyright 2014-2018 Olivier Friard<br>
         <br>
         https://github.com/barmanoo/pyPhotoGeoTagger<br>
         <br>
@@ -521,7 +498,6 @@ class MainWindow(QMainWindow):
          pythonVersion=platform.python_version(),
           qtVersion=QT_VERSION_STR, pyqtVersion=PYQT_VERSION_STR )
           )
-
 
 
     def save_positions(self):
@@ -554,27 +530,23 @@ class MainWindow(QMainWindow):
 
     def itemSelectionChanged(self):
 
-        '''self.removeAllMarkers()'''
-
         for item in self.listWidget.selectedItems():
             pictLat, pictLon = self.gps_dict[ item.text()]["gps"][0:2]
             if pictLat or pictLon:
                 id = item.text().replace("-", "")
                 s = "m%(id)s = new L.Marker([%(lat)f, %(lon)f], {draggable:true});map.addLayer(m%(id)s);m%(id)s.bindPopup('%(id)s').openPopup();" % {'lat':pictLat, 'lon':pictLon, 'id': id}
 
-                #self.frame.evaluateJavaScript(s)
                 self.browser.page().runJavaScript(s)
                 self.memMarker.append(id)
                 self.get_map(pictLat, pictLon, self.zoom)
 
 
-    def get_map(self, lat, lon, zoom):
+    def get_map(self, lat, lng, zoom):
         """
         set leaflet with parameters latitude, longitude and zoom
         """
-        if lat or lon:
-            #self.frame.evaluateJavaScript("map.setView([%f, %f], %d);" % (lat, lon, zoom))
-            self.browser.page().runJavaScript("map.setView([%f, %f], %d);" % (lat, lon, zoom))
+        if lat or lng:
+            self.browser.page().runJavaScript(f"map.setView([{lat}, {lng}], {zoom});")
 
 
     def load_directory_activated(self):
@@ -595,9 +567,9 @@ class MainWindow(QMainWindow):
 
 
     def closeEvent(self, event):
-        '''
+        """
         check if pictures position are saved and close program
-        '''
+        """
 
         if self.changed:
             response = MessageDialog('PhotoGeoTagger', 'Save positions to photos?', ['Yes', 'No', 'Cancel'])
